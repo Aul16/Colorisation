@@ -1,7 +1,7 @@
 ##
 
-import os
-import cv2 as cv
+# import os
+# import cv2 as cv
 #
 # tomes = os.listdir("./train/")
 # for tome in tomes:
@@ -30,12 +30,11 @@ import cv2 as cv
 
 import torch
 from torch.utils.data import Dataset
-from torchvision import datasets, transforms
+from torchvision import transforms
 from torchvision.io import read_image, ImageReadMode
 from torchinfo import summary
 from torch.utils.data import DataLoader
 from torch import nn
-import torch.nn.functional as f
 
 from tqdm import tqdm
 import pandas as pd
@@ -43,12 +42,11 @@ import matplotlib.pyplot as plt
 
 ##
 
-BATCH_SIZE = 8
-IMG_SHAPE = (256, 256)
+BATCH_SIZE = 32
+IMG_SHAPE = (128, 128)
+
 
 # On crée un dataset custom à partir des images du dossier 'dataset'
-
-
 class TrainDataset(Dataset):
     def __init__(self, img_csv, img_size):
         self.img_csv = pd.read_csv(img_csv, delimiter=";")
@@ -73,6 +71,10 @@ training_data = TrainDataset('./images.csv', IMG_SHAPE)
 
 # On charge notre dataset dans un dataloader
 x_train = DataLoader(training_data, batch_size=BATCH_SIZE, shuffle=True)
+print(len(x_train))
+for img in x_train:
+    print(img[0].shape)
+    break
 
 ##
 
@@ -90,6 +92,7 @@ for i, (img, gray_img) in enumerate(x_train):
     if i >= 2:
         break
 
+plt.show()
 ##
 
 
@@ -218,10 +221,10 @@ class AutoEncoder(nn.Module):
         x4 = self.down4(x3)
         x5 = self.down5(x4)
         entry = self.up1(x5)
-        entry = self.up2(entry)
-        entry = self.up3(entry)
-        entry = self.up4(entry)
-        entry = self.up5(entry)
+        entry = self.up2(entry + x4)
+        entry = self.up3(entry + x3)
+        entry = self.up4(entry + x2)
+        entry = self.up5(entry + x1)
         return entry
 
 
@@ -237,7 +240,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 loss = None
 epoch = 10
-for i in range(epoch):
+for i in tqdm(range(epoch)):
     for j, batch in tqdm(enumerate(x_train)):
 
         optimizer.zero_grad()
@@ -246,10 +249,10 @@ for i in range(epoch):
         loss = loss_function(y_hat, y) * 100
         loss.backward()
         optimizer.step()
-        if j % 10 == 0:
+        if j % 500 == 0:
             print(f"Loss : {loss.item()}")
             plt.subplot(3, 3, 1)
-            plt.imshow(x[0].permute(1, 2, 0).detach().numpy())
+            plt.imshow(x[0].permute(1, 2, 0).detach().numpy(), cmap="gray")
             plt.title('Input Image')
             plt.axis('off')
             plt.subplot(3, 3, 2)
@@ -261,4 +264,8 @@ for i in range(epoch):
             plt.title('Predicted Image')
             plt.axis('off')
             plt.show()
+
     print(f"Epoch {i + 1}/{epoch} terminée, Loss : {loss.item()}")
+
+##
+
