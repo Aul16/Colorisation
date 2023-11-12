@@ -42,8 +42,8 @@ import matplotlib.pyplot as plt
 
 ##
 
-BATCH_SIZE = 32
-IMG_SHAPE = (128, 128)
+BATCH_SIZE = 128
+IMG_SHAPE = (256, 256)
 
 
 # On crée un dataset custom à partir des images du dossier 'dataset'
@@ -211,7 +211,7 @@ class AutoEncoder(nn.Module):
         self.up2 = UpScale(n * 8, n * 4)
         self.up3 = UpScale(n * 4, n * 2)
         self.up4 = UpScale(n * 2, n)
-        self.up5 = UpScale(n, 1)
+        self.up5 = UpScale(n, 3)
         self.relu = nn.ReLU()
 
     def forward(self, entry):
@@ -249,7 +249,7 @@ for i in tqdm(range(epoch)):
         loss = loss_function(y_hat, y) * 100
         loss.backward()
         optimizer.step()
-        if j % 500 == 0:
+        if j % 50 == 0:
             print(f"Loss : {loss.item()}")
             plt.subplot(3, 3, 1)
             plt.imshow(x[0].permute(1, 2, 0).detach().numpy(), cmap="gray")
