@@ -1,0 +1,58 @@
+##
+import os
+import cv2 as cv
+import torch
+from torch.utils.data import Dataset
+from torchvision import datasets, transforms
+from torchvision.io import read_image, ImageReadMode
+from torch.utils.data import DataLoader
+from torch import nn
+
+from tqdm import tqdm
+import pandas as pd
+import matplotlib.pyplot as plt
+
+##
+BATCH_SIZE = 64
+IMG_SHAPE = (64, 64)
+
+#On crée un dataset custom à partir des images du dossier 'dataset'
+class TrainDataset(Dataset):
+    def __init__(self, img_csv, img_size):
+        self.img_csv = pd.read_csv(img_csv, delimiter=";")
+        self.transform = transforms.Resize(img_size)
+
+    def __len__(self):
+        return len(self.img_csv)
+
+    def __getitem__(self, index):
+        img_paths = self.img_csv.iloc[index, :]
+        image = [read_image(img_path, ImageReadMode.RGB) for img_path in img_paths]
+        # On reshape les données :
+
+        image = [self.transform(img) for img in image]
+
+        #On normalise les données
+        image = [(img - 127.5)/127.5 for img in image]
+        return image[0], image[1]
+
+
+training_data = TrainDataset('./images.csv', IMG_SHAPE)
+
+#On charge notre dataset dans un dataloader
+x_train = DataLoader(training_data, batch_size=BATCH_SIZE, shuffle=True)
+
+##
+for i,(img, gray_img) in enumerate(x_train):
+    plt.subplot(3, 2, 2*i+1)
+    plt.imshow(img[0].permute(1, 2, 0))
+    plt.axis("off")
+    plt.subplot(3, 2, i*2 + 2)
+    plt.imshow(gray_img[0].permute(1,2,0), cmap="gray")
+    plt.axis("off")
+    if i >= 2:
+        break
+plt.show()
+
+##
+
