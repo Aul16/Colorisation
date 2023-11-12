@@ -3,8 +3,8 @@
 import os
 import cv2 as cv
 #
-#tomes = os.listdir("./train/")
-#for tome in tomes:
+# tomes = os.listdir("./train/")
+# for tome in tomes:
 #    imgs = os .listdir(f"./train/{tome}/pages/")
 #    os.makedirs(f"./train/{tome}/pages_BW")
 #    for img in imgs:
@@ -17,9 +17,9 @@ import cv2 as cv
 #            cv.imwrite(f"./train/{tome}/pages_BW/{img}", image)
 #        except: pass
 
-#tomes = os.listdir("./train/")
+# tomes = os.listdir("./train/")
 #
-#with open("./images.csv", "w", newline='') as csvfile:
+# with open("./images.csv", "w", newline='') as csvfile:
 #    for tome in tomes:
 #        imgs = os.listdir(f"./train/{tome}/pages_BW/")
 #        for img in imgs:
@@ -35,7 +35,7 @@ from torchvision.io import read_image, ImageReadMode
 from torchinfo import summary
 from torch.utils.data import DataLoader
 from torch import nn
-import torch.nn.functional as F
+import torch.nn.functional as f
 
 from tqdm import tqdm
 import pandas as pd
@@ -62,17 +62,17 @@ class TrainDataset(Dataset):
         image = [read_image(img_paths[0]), read_image(img_paths[1], ImageReadMode.RGB)]
         # On reshape les données :
 
-        image = [self.transform(img) for img in image]
+        image = [self.transform(k) for k in image]
 
         # On normalise les données
-        image = [(img - 127.5)/127.5 for img in image]
+        image = [(k - 127.5) / 127.5 for k in image]
         return image[0], image[1]
 
 
 training_data = TrainDataset('./images.csv', IMG_SHAPE)
 
 # On charge notre dataset dans un dataloader
-x_train = DataLoader(training_data, batch_size = BATCH_SIZE, shuffle = True)
+x_train = DataLoader(training_data, batch_size=BATCH_SIZE, shuffle=True)
 
 ##
 
@@ -104,20 +104,22 @@ class Identity(nn.Module):
         self.batch3 = nn.BatchNorm2d(channel)
         self.relu = nn.ReLU()
 
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.batch1(x)
-        x = self.relu(x)
-        x = self.conv2(x)
-        x = self.batch2(x)
-        x = self.relu(x)
-        x = self.conv3(x)
-        x = self.batch3(x)
-        x = self.relu(x)
-        return x
+    def forward(self, entry):
+        entry = self.conv1(entry)
+        entry = self.batch1(entry)
+        entry = self.relu(entry)
+        entry = self.conv2(entry)
+        entry = self.batch2(entry)
+        entry = self.relu(entry)
+        entry = self.conv3(entry)
+        entry = self.batch3(entry)
+        entry = self.relu(entry)
+        return entry
 
 
 class DownScale(nn.Module):
+    identity: Identity
+
     def __init__(self, channel_in, channel_out):
         super().__init__()
         self.down1 = nn.Conv2d(channel_in, channel_out, 3, stride=2, padding=1)
@@ -131,22 +133,22 @@ class DownScale(nn.Module):
         self.identity = Identity(channel_out)
         self.relu = nn.ReLU()
 
-    def forward(self, x):
-        x1 = x
-        x = self.id1(x)
-        x = self.batch_id1(x)
-        x = self.relu(x)
-        x = self.down1(x)
-        x = self.batch_down1(x)
-        x = self.relu(x)
-        x = self.id2(x)
-        x = self.batch_id2(x)
-        x = self.relu(x)
+    def forward(self, entry):
+        x1 = entry
+        entry = self.id1(entry)
+        entry = self.batch_id1(entry)
+        entry = self.relu(entry)
+        entry = self.down1(entry)
+        entry = self.batch_down1(entry)
+        entry = self.relu(entry)
+        entry = self.id2(entry)
+        entry = self.batch_id2(entry)
+        entry = self.relu(entry)
         x1 = self.down2(x1)
         x1 = self.batch_down2(x1)
         x1 = self.relu(x1)
-        x = self.identity(x + x1)
-        return x
+        entry = self.identity(entry + x1)
+        return entry
 
 
 down = DownScale(32, 64)
@@ -170,22 +172,22 @@ class UpScale(nn.Module):
         self.identity = Identity(channel_out)
         self.relu = nn.ReLU()
 
-    def forward(self, x):
-        x1 = x
-        x = self.id1(x)
-        x = self.batch_id1(x)
-        x = self.relu(x)
-        x = self.up1(x)
-        x = self.batch_up1(x)
-        x = self.relu(x)
-        x = self.id2(x)
-        x = self.batch_id2(x)
-        x = self.relu(x)
+    def forward(self, entry):
+        x1 = entry
+        entry = self.id1(entry)
+        entry = self.batch_id1(entry)
+        entry = self.relu(entry)
+        entry = self.up1(entry)
+        entry = self.batch_up1(entry)
+        entry = self.relu(entry)
+        entry = self.id2(entry)
+        entry = self.batch_id2(entry)
+        entry = self.relu(entry)
         x1 = self.up2(x1)
         x1 = self.batch_up2(x1)
         x1 = self.relu(x1)
-        x = self.identity(x + x1)
-        return x
+        entry = self.identity(entry + x1)
+        return entry
 
 
 up = UpScale(64, 32)
@@ -209,18 +211,18 @@ class AutoEncoder(nn.Module):
         self.up5 = UpScale(n, 1)
         self.relu = nn.ReLU()
 
-    def forward(self, x):
-        x1 = self.down1(x)
+    def forward(self, entry):
+        x1 = self.down1(entry)
         x2 = self.down2(x1)
         x3 = self.down3(x2)
         x4 = self.down4(x3)
         x5 = self.down5(x4)
-        x = self.up1(x5)
-        x = self.up2(x)
-        x = self.up3(x)
-        x = self.up4(x)
-        x = self.up5(x)
-        return x
+        entry = self.up1(x5)
+        entry = self.up2(entry)
+        entry = self.up3(entry)
+        entry = self.up4(entry)
+        entry = self.up5(entry)
+        return entry
 
 
 model = AutoEncoder(16)
@@ -233,6 +235,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 ##
 
+loss = None
 epoch = 10
 for i in range(epoch):
     for j, batch in tqdm(enumerate(x_train)):
