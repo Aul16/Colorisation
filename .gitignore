@@ -1,5 +1,5 @@
 train/
 Train_K/
-.vscode/
-.venv/
+venv/
 train.zip
+kaggle.json
