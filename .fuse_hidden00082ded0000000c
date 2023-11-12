@@ -1,0 +1,15 @@
+       
+import torch
+from torch.utils.data import Dataset
+from torchvision import datasets, transforms
+from torchvision.io import read_image, ImageReadMode
+from torchinfo import summary
+from torch.utils.data import DataLoader
+from torch import nn
+import torch.nn.functional as F
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+a = torch.rand(2, 3).to(device)
+b = torch.rand(3, 2).to(device)
+a @ b
